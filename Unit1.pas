@@ -6,28 +6,33 @@ uses
   System.SysUtils, System.Types, System.UITypes, System.Classes, System.Variants,
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs,
   FMX.Controls.Presentation, FMX.StdCtrls, FMX.ListBox,
-  Svc, System.ImageList, FMX.ImgList;
+  Svc, System.ImageList, FMX.ImgList, FMX.Objects, FMX.Edit, FMX.ComboEdit;
 
 type
   TForm1 = class(TForm)
     Button1: TButton;
-    ComboBox1: TComboBox;
     Timer1: TTimer;
     Label1: TLabel;
     ComboBox2: TComboBox;
     SpeedButton1: TSpeedButton;
     ButtonImageList: TImageList;
     SpeedButton2: TSpeedButton;
+    ImageControl1: TImageControl;
+    SpeedButton3: TSpeedButton;
+    Image1: TImage;
+    ComboEdit1: TComboEdit;
     procedure Button1Click(Sender: TObject);
     procedure Timer1Timer(Sender: TObject);
     procedure ComboBox2Change(Sender: TObject);
     procedure ComboBox1Change(Sender: TObject);
-    procedure FormCreate(Sender: TObject);
     procedure SpeedButton1Click(Sender: TObject);
     procedure SpeedButton2Click(Sender: TObject);
+    procedure FormShow(Sender: TObject);
   private
     { Private declarations }
+    FInitialized: Boolean;
     FServiceManager: IWindowsServiceManager;
+    procedure Initialize;
   public
     { Public declarations }
   end;
@@ -38,6 +43,8 @@ var
 implementation
 
 {$R *.fmx}
+
+uses WinSvc, FMX.MultiResBitmap;
 
 procedure TForm1.Button1Click(Sender: TObject);
 begin
@@ -66,16 +73,26 @@ end;
 procedure TForm1.ComboBox1Change(Sender: TObject);
 begin
   if Assigned(FServiceManager) then
-    Caption := FServiceManager.GetService(ComboBox1.Selected.Text).Status.ToString;
+    Caption := FServiceManager.GetService(ComboEdit1.Text).Status.ToString;
 end;
 
 procedure TForm1.ComboBox2Change(Sender: TObject);
 begin
-  FServiceManager := NewWindowsServiceManager(ComboBox2.Selected.Text);
+  if ComboBox2.ItemIndex > -1 then
+    FServiceManager := NewWindowsServiceManager(ComboBox2.Selected.Text);
 end;
 
-procedure TForm1.FormCreate(Sender: TObject);
+procedure TForm1.FormShow(Sender: TObject);
 begin
+  Initialize;
+end;
+
+procedure TForm1.Initialize;
+begin
+  if FInitialized then
+    Exit;
+  FInitialized := True;
+
   ComboBox2Change(Self);
   Timer1.Enabled := True;
 end;
@@ -83,19 +100,39 @@ end;
 procedure TForm1.SpeedButton1Click(Sender: TObject);
 begin
   if Assigned(FServiceManager) then
-    FServiceManager.GetService(ComboBox1.Selected.Text).Start;
+    FServiceManager.GetService(ComboEdit1.Text).Start;
 end;
 
 procedure TForm1.SpeedButton2Click(Sender: TObject);
 begin
   if Assigned(FServiceManager) then
-    FServiceManager.GetService(ComboBox1.Selected.Text).Stop;
+    FServiceManager.GetService(ComboEdit1.Text).Stop;
 end;
 
 procedure TForm1.Timer1Timer(Sender: TObject);
+var
+  Item: TCustomBitmapItem;
+  Size: TSize;
 begin
+  Item := nil;
+
   if Assigned(FServiceManager) then
-    Caption := FServiceManager.GetService(ComboBox1.Selected.Text).Status.ToString;
+    case FServiceManager.GetService(ComboEdit1.Text).Status of
+      SERVICE_STOPPED: ButtonImageList.BitmapItemByName('Stopped', Item, Size);
+      SERVICE_START_PENDING: ButtonImageList.BitmapItemByName('Starting', Item, Size);
+      SERVICE_STOP_PENDING: ButtonImageList.BitmapItemByName('Stopping', Item, Size);
+      SERVICE_RUNNING: ButtonImageList.BitmapItemByName('Running', Item, Size);
+      SERVICE_CONTINUE_PENDING: ButtonImageList.BitmapItemByName('Continuing', Item, Size);
+      SERVICE_PAUSE_PENDING: ButtonImageList.BitmapItemByName('Pausing', Item, Size);
+      SERVICE_PAUSED: ButtonImageList.BitmapItemByName('Paused', Item, Size);
+
+//      else
+// *** -1 = Error opening service *** }
+    end;
+    if Assigned(Item) then
+      Image1.Bitmap := Item.MultiResBitmap.Bitmaps[1.0]
+    else
+      Image1.Bitmap := nil;
 end;
 
 end.
