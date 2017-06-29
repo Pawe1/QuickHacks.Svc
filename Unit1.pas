@@ -6,21 +6,25 @@ uses
   System.SysUtils, System.Types, System.UITypes, System.Classes, System.Variants,
   FMX.Types, FMX.Controls, FMX.Forms, FMX.Graphics, FMX.Dialogs,
   FMX.Controls.Presentation, FMX.StdCtrls, FMX.ListBox,
-  Svc, System.ImageList, FMX.ImgList, FMX.Objects, FMX.Edit, FMX.ComboEdit;
+  Svc, System.ImageList, FMX.ImgList, FMX.Objects, FMX.Edit, FMX.ComboEdit,
+  FMX.ListView.Types, FMX.ListView.Appearances, FMX.ListView.Adapters.Base,
+  FMX.ListView,
+  System.Generics.Collections;
 
 type
   TForm1 = class(TForm)
-    Button1: TButton;
     Timer1: TTimer;
     Label1: TLabel;
     ComboBox2: TComboBox;
-    SpeedButton1: TSpeedButton;
     ButtonImageList: TImageList;
-    SpeedButton2: TSpeedButton;
-    ImageControl1: TImageControl;
-    SpeedButton3: TSpeedButton;
     Image1: TImage;
     ComboEdit1: TComboEdit;
+    ListView1: TListView;
+    QuarkImageList: TImageList;
+    StatusImageList: TImageList;
+    Button2: TButton;
+    SpeedButton4: TSpeedButton;
+    SpeedButton1: TSpeedButton;
     procedure Button1Click(Sender: TObject);
     procedure Timer1Timer(Sender: TObject);
     procedure ComboBox2Change(Sender: TObject);
@@ -28,11 +32,29 @@ type
     procedure SpeedButton1Click(Sender: TObject);
     procedure SpeedButton2Click(Sender: TObject);
     procedure FormShow(Sender: TObject);
+    procedure Button2Click(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
+    procedure FormDestroy(Sender: TObject);
+  private
+    type
+      TServiceItem = record
+        Name: string;
+        ImageIndex: Integer;
+      end;
+
+    const
+      Defaults: array [0..2] of TServiceItem = (
+        (Name: 'Schedule'; ImageIndex: -1),
+        (Name: 'QPPServer'; ImageIndex: 0),
+        (Name: 'QuarkXPressServer2016'; ImageIndex: 1));
   private
     { Private declarations }
     FInitialized: Boolean;
     FServiceManager: IWindowsServiceManager;
+
+    FMonitoredServices: TList<TServiceItem>;
     procedure Initialize;
+    procedure DisplayMonitoredServices;
   public
     { Public declarations }
   end;
@@ -45,6 +67,19 @@ implementation
 {$R *.fmx}
 
 uses WinSvc, FMX.MultiResBitmap;
+
+procedure TForm1.DisplayMonitoredServices;
+var
+  ListItem: TListViewItem;
+  MonitoredItem: TServiceItem;
+begin
+  for MonitoredItem in FMonitoredServices do
+  begin
+    ListItem := ListView1.Items.Add;
+    ListItem.Text := MonitoredItem.Name;
+    ListItem.ImageIndex := MonitoredItem.ImageIndex;
+  end;
+end;
 
 procedure TForm1.Button1Click(Sender: TObject);
 begin
@@ -70,6 +105,19 @@ begin
 //end;
 end;
 
+procedure TForm1.Button2Click(Sender: TObject);
+var
+  Item: TListViewItem;
+  ldes, lOrder, lLegal : TListItemText;
+begin
+//   ldes := list.Objects.FindObjectT<TListItemText>('Description');
+//   lOrder := list.Objects.FindObjectT<TListItemText>('OrderId');
+//   lLegal := list.Objects.FindObjectT<TListItemText>('LegalCode');
+//   ldes.Text := 'Mouri';
+//   lOrder.Text := 'Love';
+//   lLegal.Text := 'You'
+end;
+
 procedure TForm1.ComboBox1Change(Sender: TObject);
 begin
   if Assigned(FServiceManager) then
@@ -82,6 +130,21 @@ begin
     FServiceManager := NewWindowsServiceManager(ComboBox2.Selected.Text);
 end;
 
+procedure TForm1.FormCreate(Sender: TObject);
+var
+  Item: TServiceItem;
+begin
+  FMonitoredServices := TList<TServiceItem>.Create;
+
+  for Item in Defaults do
+    FMonitoredServices.Add(Item);
+end;
+
+procedure TForm1.FormDestroy(Sender: TObject);
+begin
+  FreeAndNil(FMonitoredServices);
+end;
+
 procedure TForm1.FormShow(Sender: TObject);
 begin
   Initialize;
@@ -92,6 +155,8 @@ begin
   if FInitialized then
     Exit;
   FInitialized := True;
+
+  DisplayMonitoredServices;
 
   ComboBox2Change(Self);
   Timer1.Enabled := True;
